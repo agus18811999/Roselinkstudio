@@ -1811,16 +1811,22 @@
         if (target === 'barcode') renderBarcode();
       }
 
-      function setupEventListeners() {
-        // Tab switching
-        document.getElementById('tabBtnShortlink').onclick = () => switchTab('shortlink');
-        document.getElementById('tabBtnQrcode').onclick = () => switchTab('qrcode');
-        document.getElementById('tabBtnBarcode').onclick = () => switchTab('barcode');
+     function setupEventListeners() {
+        // Helper anti-crash: hanya pasang event jika elemennya ADA di layar
+        const safeBind = (id, event, handler) => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener(event, handler);
+        };
 
-        // Shortlink submit
-        document.getElementById('slSubmitBtn').onclick = submitShortlink;
+        // 1. Tab switching
+        safeBind('tabBtnShortlink', 'click', () => switchTab('shortlink'));
+        safeBind('tabBtnQrcode', 'click', () => switchTab('qrcode'));
+        safeBind('tabBtnBarcode', 'click', () => switchTab('barcode'));
 
-        // QR Mode Switchers
+        // 2. Shortlink submit
+        safeBind('slSubmitBtn', 'click', submitShortlink);
+
+        // 3. QR Mode Switchers
         document.querySelectorAll('.qr-type-btn').forEach(btn => {
           btn.onclick = (e) => {
             document.querySelectorAll('.qr-type-btn').forEach(b => {
@@ -1831,37 +1837,43 @@
             const type = e.currentTarget.dataset.qrtype;
             AppState.qrSettings.type = type;
 
-            document.getElementById('qrFieldUrl').classList.toggle('hidden', type !== 'url');
-            document.getElementById('qrFieldText').classList.toggle('hidden', type !== 'text');
-            document.getElementById('qrFieldWhatsApp').classList.toggle('hidden', type !== 'whatsapp');
-            document.getElementById('qrFieldWiFi').classList.toggle('hidden', type !== 'wifi');
+            const fUrl = document.getElementById('qrFieldUrl');
+            const fText = document.getElementById('qrFieldText');
+            const fWa = document.getElementById('qrFieldWhatsApp');
+            const fWifi = document.getElementById('qrFieldWiFi');
+
+            if (fUrl) fUrl.classList.toggle('hidden', type !== 'url');
+            if (fText) fText.classList.toggle('hidden', type !== 'text');
+            if (fWa) fWa.classList.toggle('hidden', type !== 'whatsapp');
+            if (fWifi) fWifi.classList.toggle('hidden', type !== 'wifi');
 
             renderQRCode();
           };
         });
 
-        // Realtime QR Input Listeners
+        // 4. Realtime QR Input Listeners
         ['qrInputUrl', 'qrInputText', 'qrInputWaPhone', 'qrInputWaMsg', 'qrInputWifiSsid', 'qrInputWifiPass', 'qrInputWifiType', 'qrErrorLevel', 'qrMargin'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.oninput = () => renderQRCode();
+          safeBind(id, 'input', () => renderQRCode());
         });
 
-        document.getElementById('qrColorDark').oninput = (e) => {
+        safeBind('qrColorDark', 'input', (e) => {
           AppState.qrSettings.darkColor = e.target.value;
-          document.getElementById('qrColorDarkVal').innerText = e.target.value.toUpperCase();
+          const valEl = document.getElementById('qrColorDarkVal');
+          if (valEl) valEl.innerText = e.target.value.toUpperCase();
           renderQRCode();
-        };
+        });
 
-        document.getElementById('qrColorLight').oninput = (e) => {
+        safeBind('qrColorLight', 'input', (e) => {
           AppState.qrSettings.lightColor = e.target.value;
-          document.getElementById('qrColorLightVal').innerText = e.target.value.toUpperCase();
+          const valEl = document.getElementById('qrColorLightVal');
+          if (valEl) valEl.innerText = e.target.value.toUpperCase();
           renderQRCode();
-        };
+        });
 
-        // QR Downloads & Print
-        document.getElementById('qrDownloadPngBtn').onclick = downloadQrPNG;
-        document.getElementById('qrDownloadSvgBtn').onclick = downloadQrSVG;
-        document.getElementById('qrPrintBtn').onclick = () => {
+        // 5. QR Downloads & Print
+        safeBind('qrDownloadPngBtn', 'click', downloadQrPNG);
+        safeBind('qrDownloadSvgBtn', 'click', downloadQrSVG);
+        safeBind('qrPrintBtn', 'click', () => {
           const canvas = document.getElementById('activeQrCanvas');
           if (!canvas) return;
           const win = window.open('', '_blank');
@@ -1869,17 +1881,16 @@
           win.document.close();
           win.focus();
           win.print();
-        };
-
-        // Barcode Listeners
-        ['bcFormat', 'bcValue', 'bcBarWidth', 'bcHeight', 'bcLineColor', 'bcDisplayText'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.oninput = () => renderBarcode();
         });
 
-        document.getElementById('bcDownloadPngBtn').onclick = downloadBarcodePNG;
-        document.getElementById('bcDownloadSvgBtn').onclick = downloadBarcodeSVG;
-        document.getElementById('bcPrintBtn').onclick = () => {
+        // 6. Barcode Listeners
+        ['bcFormat', 'bcValue', 'bcBarWidth', 'bcHeight', 'bcLineColor', 'bcDisplayText'].forEach(id => {
+          safeBind(id, 'input', () => renderBarcode());
+        });
+
+        safeBind('bcDownloadPngBtn', 'click', downloadBarcodePNG);
+        safeBind('bcDownloadSvgBtn', 'click', downloadBarcodeSVG);
+        safeBind('bcPrintBtn', 'click', () => {
           const svg = document.getElementById('barcodeCanvas');
           if (!svg) return;
           const win = window.open('', '_blank');
@@ -1887,15 +1898,15 @@
           win.document.close();
           win.focus();
           win.print();
-        };
+        });
 
-        // Dashboard Refresh & Search
-        document.getElementById('dbRefreshBtn').onclick = () => {
+        // 7. Dashboard Refresh & Search
+        safeBind('dbRefreshBtn', 'click', () => {
           loadDashboardData();
           showToast('Dashboard data synchronized.', 'info');
-        };
+        });
 
-        document.getElementById('dbSearchInput').oninput = (e) => {
+        safeBind('dbSearchInput', 'input', (e) => {
           const query = e.target.value.toLowerCase();
           const filtered = AppState.links.filter(l => 
             l.title.toLowerCase().includes(query) ||
@@ -1903,44 +1914,46 @@
             l.originalUrl.toLowerCase().includes(query)
           );
           renderLinksTable(filtered);
-        };
+        });
 
-        document.getElementById('dbStatusFilter').onchange = (e) => {
+        safeBind('dbStatusFilter', 'change', (e) => {
           const val = e.target.value;
           let filtered = AppState.links;
           if (val === 'ACTIVE') filtered = AppState.links.filter(l => l.isActive && !l.isExpired);
           if (val === 'EXPIRED') filtered = AppState.links.filter(l => l.isExpired);
           if (val === 'INACTIVE') filtered = AppState.links.filter(l => !l.isActive);
           renderLinksTable(filtered);
-        };
+        });
 
-        // Token Modal Handlers
-        document.getElementById('tokenConfigBtn').onclick = () => {
-          document.getElementById('tokenModal').classList.remove('hidden');
-        };
-        document.getElementById('tokenModalCloseBtn').onclick = () => {
-          document.getElementById('tokenModal').classList.add('hidden');
-        };
-        document.getElementById('tokenCopyBtn').onclick = () => {
+        // 8. Token Modal Handlers (Aman meskipun elemennya tidak ada)
+        safeBind('tokenConfigBtn', 'click', () => {
+          const modal = document.getElementById('tokenModal');
+          if (modal) modal.classList.remove('hidden');
+        });
+        safeBind('tokenModalCloseBtn', 'click', () => {
+          const modal = document.getElementById('tokenModal');
+          if (modal) modal.classList.add('hidden');
+        });
+        safeBind('tokenCopyBtn', 'click', () => {
           navigator.clipboard.writeText(AppState.managementToken);
           showToast('Security token copied to clipboard!', 'success');
-        };
-        document.getElementById('tokenImportBtn').onclick = () => {
-          const newToken = prompt('Paste your 32-character Management Token:');
+        });
+        safeBind('tokenImportBtn', 'click', () => {
+          const newToken = prompt('Paste your Management Token:');
           if (newToken && newToken.trim().length >= 16) {
             AppState.managementToken = newToken.trim();
             localStorage.setItem(CONFIG.STORAGE_TOKEN_KEY, AppState.managementToken);
-            document.getElementById('tokenDisplayBox').innerText = AppState.managementToken;
+            const box = document.getElementById('tokenDisplayBox');
+            if (box) box.innerText = AppState.managementToken;
             showToast('Token updated! Reloading links...', 'success');
-            document.getElementById('tokenModal').classList.add('hidden');
+            const modal = document.getElementById('tokenModal');
+            if (modal) modal.classList.add('hidden');
             loadDashboardData();
-          } else if (newToken) {
-            showToast('Invalid token format.', 'error');
           }
-        };
+        });
 
-        // Edit Modal Save Handler
-        document.getElementById('editModalSaveBtn').onclick = async () => {
+        // 9. Edit Modal Handlers
+        safeBind('editModalSaveBtn', 'click', async () => {
           const id = document.getElementById('editModalLinkId').value;
           const title = document.getElementById('editModalTitle').value.trim();
           const originalUrl = document.getElementById('editModalUrl').value.trim();
@@ -1949,15 +1962,17 @@
           const res = await callGAS('update_link', { id, title, originalUrl, description });
           if (res.success) {
             showToast('Link updated successfully!', 'success');
-            document.getElementById('editModal').classList.add('hidden');
+            const modal = document.getElementById('editModal');
+            if (modal) modal.classList.add('hidden');
             loadDashboardData();
           } else {
             showToast(res.message || 'Update failed', 'error');
           }
-        };
-        document.getElementById('editModalCancelBtn').onclick = () => {
-          document.getElementById('editModal').classList.add('hidden');
-        };
+        });
+        safeBind('editModalCancelBtn', 'click', () => {
+          const modal = document.getElementById('editModal');
+          if (modal) modal.classList.add('hidden');
+        });
       }
 
       function escapeHtml(str) {
