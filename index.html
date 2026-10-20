@@ -977,6 +977,68 @@
 
         return true;
       }
+      /**
+       * UNIVERSAL ROBUST CLIPBOARD COPY WITH VISUAL EFFECT
+       */
+      async function copyTextWithFeedback(text, btnElement = null, defaultText = 'Copy Link') {
+        let isSuccess = false;
+
+        // 1. Coba Clipboard Modern API
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(text);
+            isSuccess = true;
+          } catch (e) {
+            console.warn('Modern clipboard failed, using fallback.', e);
+          }
+        }
+
+        // 2. Fallback untuk non-HTTPS / browser lama
+        if (!isSuccess) {
+          try {
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            tempInput.style.position = 'fixed';
+            tempInput.style.left = '-9999px';
+            tempInput.style.top = '-9999px';
+            document.body.appendChild(tempInput);
+            tempInput.focus();
+            tempInput.select();
+            isSuccess = document.execCommand('copy');
+            document.body.removeChild(tempInput);
+          } catch (err) {
+            isSuccess = false;
+          }
+        }
+
+        if (isSuccess) {
+          showToast('Link berhasil disalin ke clipboard! ✓', 'success');
+
+          // Berikan Efek Animasi Visual pada Tombol yang diklik
+          if (btnElement) {
+            const originalHTML = btnElement.innerHTML;
+            const originalClasses = btnElement.className;
+
+            // Ubah tampilan tombol jadi Hijau + Centang
+            btnElement.classList.remove('bg-roseDark', 'hover:bg-black', 'text-roseDark');
+            btnElement.classList.add('bg-emerald-600', 'text-white', 'scale-105', 'shadow-lg');
+            btnElement.innerHTML = `
+              <svg class="w-4 h-4 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span class="font-bold">Copied!</span>
+            `;
+
+            // Kembalikan ke tampilan awal setelah 2 detik
+            setTimeout(() => {
+              btnElement.className = originalClasses;
+              btnElement.innerHTML = originalHTML;
+            }, 2000);
+          }
+        } else {
+          showToast('Gagal menyalin link secara otomatis.', 'error');
+        }
+      }
 
       /**
        * 7. SHORTLINK GENERATION MODULE
@@ -1029,9 +1091,9 @@
           document.getElementById('slResultCode').innerText = res.data.shortCode;
 
           // Wire up Instant Copy & QR Generation
-          document.getElementById('slCopyBtn').onclick = () => {
-            navigator.clipboard.writeText(fullShortUrl);
-            showToast('Shortlink copied to clipboard!', 'success');
+         const slCopyBtn = document.getElementById('slCopyBtn');
+          slCopyBtn.onclick = () => {
+            copyTextWithFeedback(fullShortUrl, slCopyBtn, 'Copy Link');
           };
 
           document.getElementById('slGenerateQrBtn').onclick = () => {
@@ -1674,7 +1736,7 @@
             </td>
             <td class="py-4 px-4 text-right">
               <div class="inline-flex items-center space-x-1">
-                <button class="p-1.5 rounded-lg text-roseDark hover:bg-roseBlush" title="Copy Link" onclick="RoséStudio.copyText('${fullShortUrl}')">
+<button class="p-1.5 rounded-lg text-roseDark hover:bg-roseBlush transition-all" title="Copy Link" onclick="RoséStudio.copyText('${fullShortUrl}', this)">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                 </button>
                 <button class="p-1.5 rounded-lg text-roseDark hover:bg-roseBlush" title="Generate QR" onclick="RoséStudio.loadLinkToQR('${fullShortUrl}')">
@@ -1990,9 +2052,8 @@
        * 12. GLOBAL NAMESPACE EXPORTS FOR TABLE ACTIONS
        */
       window.RoséStudio = {
-        copyText: function(text) {
-          navigator.clipboard.writeText(text);
-          showToast('Link copied to clipboard!', 'success');
+        copyText: function(text, btnElement = null) {
+          copyTextWithFeedback(text, btnElement);
         },
         loadLinkToQR: function(url) {
           switchTab('qrcode');
